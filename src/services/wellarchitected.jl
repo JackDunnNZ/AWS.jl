@@ -218,8 +218,8 @@ function create_milestone(
 end
 
 """
-    create_workload(client_request_token, description, environment, lenses, review_owner, workload_name)
-    create_workload(client_request_token, description, environment, lenses, review_owner, workload_name, params::Dict{String,<:Any})
+    create_workload(client_request_token, description, environment, lenses, workload_name)
+    create_workload(client_request_token, description, environment, lenses, workload_name, params::Dict{String,<:Any})
 
 Create a new workload. The owner of a workload can share the workload with other Amazon Web
 Services accounts and IAM users in the same Amazon Web Services Region. Only the owner of a
@@ -231,7 +231,6 @@ Well-Architected Tool User Guide.
 - `description`:
 - `environment`:
 - `lenses`:
-- `review_owner`:
 - `workload_name`:
 
 # Optional Parameters
@@ -244,6 +243,7 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
 - `"NonAwsRegions"`:
 - `"Notes"`:
 - `"PillarPriorities"`:
+- `"ReviewOwner"`:
 - `"Tags"`: The tags to be associated with the workload.
 """
 function create_workload(
@@ -251,7 +251,6 @@ function create_workload(
     Description,
     Environment,
     Lenses,
-    ReviewOwner,
     WorkloadName;
     aws_config::AbstractAWSConfig=global_aws_config(),
 )
@@ -263,7 +262,6 @@ function create_workload(
             "Description" => Description,
             "Environment" => Environment,
             "Lenses" => Lenses,
-            "ReviewOwner" => ReviewOwner,
             "WorkloadName" => WorkloadName,
         );
         aws_config=aws_config,
@@ -275,7 +273,6 @@ function create_workload(
     Description,
     Environment,
     Lenses,
-    ReviewOwner,
     WorkloadName,
     params::AbstractDict{String};
     aws_config::AbstractAWSConfig=global_aws_config(),
@@ -291,7 +288,6 @@ function create_workload(
                     "Description" => Description,
                     "Environment" => Environment,
                     "Lenses" => Lenses,
-                    "ReviewOwner" => ReviewOwner,
                     "WorkloadName" => WorkloadName,
                 ),
                 params,
@@ -1251,7 +1247,8 @@ end
     list_tags_for_resource(workload_arn)
     list_tags_for_resource(workload_arn, params::Dict{String,<:Any})
 
-List the tags for a resource.
+List the tags for a resource.  The WorkloadArn parameter can be either a workload ARN or a
+custom lens ARN.
 
 # Arguments
 - `workload_arn`:
@@ -1355,7 +1352,8 @@ end
     tag_resource(tags, workload_arn)
     tag_resource(tags, workload_arn, params::Dict{String,<:Any})
 
-Adds one or more tags to the specified resource.
+Adds one or more tags to the specified resource.  The WorkloadArn parameter can be either a
+workload ARN or a custom lens ARN.
 
 # Arguments
 - `tags`: The tags for the resource.
@@ -1390,8 +1388,9 @@ end
     untag_resource(workload_arn, tag_keys)
     untag_resource(workload_arn, tag_keys, params::Dict{String,<:Any})
 
-Deletes specified tags from a resource. To specify multiple tags, use separate tagKeys
-parameters, for example:  DELETE /tags/WorkloadArn?tagKeys=key1&amp;tagKeys=key2
+Deletes specified tags from a resource.  The WorkloadArn parameter can be either a workload
+ARN or a custom lens ARN.  To specify multiple tags, use separate tagKeys parameters, for
+example:  DELETE /tags/WorkloadArn?tagKeys=key1&amp;tagKeys=key2
 
 # Arguments
 - `workload_arn`:

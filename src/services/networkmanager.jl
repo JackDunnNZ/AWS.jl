@@ -97,11 +97,11 @@ end
 
 Associates a customer gateway with a device and optionally, with a link. If you specify a
 link, it must be associated with the specified device.  You can only associate customer
-gateways that are connected to a VPN attachment on a transit gateway. The transit gateway
-must be registered in your global network. When you register a transit gateway, customer
-gateways that are connected to the transit gateway are automatically included in the global
-network. To list customer gateways that are connected to a transit gateway, use the
-DescribeVpnConnections EC2 API and filter by transit-gateway-id. You cannot associate a
+gateways that are connected to a VPN attachment on a transit gateway or core network
+registered in your global network. When you register a transit gateway or core network,
+customer gateways that are connected to the transit gateway are automatically included in
+the global network. To list customer gateways that are connected to a transit gateway, use
+the DescribeVpnConnections EC2 API and filter by transit-gateway-id. You cannot associate a
 customer gateway with more than one device and link.
 
 # Arguments
@@ -333,7 +333,7 @@ end
     create_connect_peer(connect_attachment_id, inside_cidr_blocks, peer_address)
     create_connect_peer(connect_attachment_id, inside_cidr_blocks, peer_address, params::Dict{String,<:Any})
 
-Creates a core network connect peer for a specified core network connect attachment between
+Creates a core network Connect peer for a specified core network connect attachment between
 a core network and an appliance. The peer address and transit gateway address must be the
 same IP address family (IPv4 or IPv6).
 
@@ -680,7 +680,8 @@ end
     create_site_to_site_vpn_attachment(core_network_id, vpn_connection_arn)
     create_site_to_site_vpn_attachment(core_network_id, vpn_connection_arn, params::Dict{String,<:Any})
 
-Creates a site-to-site VPN attachment on an edge location of a core network.
+Creates an Amazon Web Services site-to-site VPN attachment on an edge location of a core
+network.
 
 # Arguments
 - `core_network_id`: The ID of a core network where you're creating a site-to-site VPN
@@ -1007,7 +1008,7 @@ end
     delete_global_network(global_network_id, params::Dict{String,<:Any})
 
 Deletes an existing global network. You must first delete all global network objects
-(devices, links, and sites) and deregister all transit gateways.
+(devices, links, and sites), deregister all transit gateways, and delete any core networks.
 
 # Arguments
 - `global_network_id`: The ID of the global network.
@@ -1554,7 +1555,7 @@ end
     get_core_network(core_network_id)
     get_core_network(core_network_id, params::Dict{String,<:Any})
 
-Returns information about a core network. By default it returns the LIVE policy.
+Returns information about the LIVE policy for a core network.
 
 # Arguments
 - `core_network_id`: The ID of a core network.
@@ -2459,6 +2460,39 @@ function list_core_networks(
 end
 
 """
+    list_organization_service_access_status()
+    list_organization_service_access_status(params::Dict{String,<:Any})
+
+
+
+# Optional Parameters
+Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"maxResults"`:
+- `"nextToken"`:
+"""
+function list_organization_service_access_status(;
+    aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return networkmanager(
+        "GET",
+        "/organizations/service-access";
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function list_organization_service_access_status(
+    params::AbstractDict{String}; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return networkmanager(
+        "GET",
+        "/organizations/service-access",
+        params;
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
     list_tags_for_resource(resource_arn)
     list_tags_for_resource(resource_arn, params::Dict{String,<:Any})
 
@@ -2693,6 +2727,39 @@ function restore_core_network_policy_version(
         "POST",
         "/core-networks/$(coreNetworkId)/core-network-policy-versions/$(policyVersionId)/restore",
         params;
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
+    start_organization_service_access_update(action)
+    start_organization_service_access_update(action, params::Dict{String,<:Any})
+
+
+
+# Arguments
+- `action`:
+
+"""
+function start_organization_service_access_update(
+    Action; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return networkmanager(
+        "POST",
+        "/organizations/service-access",
+        Dict{String,Any}("Action" => Action);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function start_organization_service_access_update(
+    Action, params::AbstractDict{String}; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return networkmanager(
+        "POST",
+        "/organizations/service-access",
+        Dict{String,Any}(mergewith(_merge, Dict{String,Any}("Action" => Action), params));
         aws_config=aws_config,
         feature_set=SERVICE_FEATURE_SET,
     )

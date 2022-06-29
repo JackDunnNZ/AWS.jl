@@ -385,11 +385,8 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
   cache.m1.small, cache.m1.medium, cache.m1.large, cache.m1.xlarge   M3 node types:
   cache.m3.medium, cache.m3.large, cache.m3.xlarge, cache.m3.2xlarge      Compute optimized:
    Previous generation: (not recommended)  C1 node types: cache.c1.xlarge      Memory
-  optimized with data tiering:   Current generation:   R6gd node types (available only for
-  Redis engine version 6.2 onward).  cache.r6gd.xlarge, cache.r6gd.2xlarge,
-  cache.r6gd.4xlarge, cache.r6gd.8xlarge, cache.r6gd.12xlarge, cache.r6gd.16xlarge
-  Memory optimized:   Current generation:   R6g node types (available only for Redis engine
-  version 5.0.6 onward and for Memcached engine version 1.5.16 onward).  cache.r6g.large,
+  optimized:   Current generation:   R6g node types (available only for Redis engine version
+  5.0.6 onward and for Memcached engine version 1.5.16 onward).  cache.r6g.large,
   cache.r6g.xlarge, cache.r6g.2xlarge, cache.r6g.4xlarge, cache.r6g.8xlarge,
   cache.r6g.12xlarge, cache.r6g.16xlarge   For region availability, see Supported Node Types
     R5 node types: cache.r5.large, cache.r5.xlarge, cache.r5.2xlarge, cache.r5.4xlarge,
@@ -449,7 +446,7 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
 - `"PreferredMaintenanceWindow"`: Specifies the weekly time range during which maintenance
   on the cluster is performed. It is specified as a range in the format
   ddd:hh24:mi-ddd:hh24:mi (24H Clock UTC). The minimum maintenance window is a 60 minute
-  period. Valid values for ddd are:
+  period.
 - `"PreferredOutpostArn"`: The outpost ARN in which the cache cluster is created.
 - `"PreferredOutpostArns"`: The outpost ARNs in which the cache cluster is created.
 - `"ReplicationGroupId"`: The ID of the replication group to which this cluster should
@@ -480,6 +477,11 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
   this parameter, ElastiCache automatically chooses an appropriate time range.  This
   parameter is only valid if the Engine parameter is redis.
 - `"Tags"`: A list of tags to be added to this resource.
+- `"TransitEncryptionEnabled"`: A flag that enables in-transit encryption when set to true.
+  You cannot modify the value of TransitEncryptionEnabled after the cluster is created. To
+  enable in-transit encryption on a cluster you must set TransitEncryptionEnabled to true
+  when you create a cluster.   Required: Only available when creating a cache cluster in an
+  Amazon VPC using Memcached version 1.6.12 or later.
 """
 function create_cache_cluster(
     CacheClusterId; aws_config::AbstractAWSConfig=global_aws_config()
@@ -522,7 +524,7 @@ Groups in the ElastiCache User Guide.
 # Arguments
 - `cache_parameter_group_family`: The name of the cache parameter group family that the
   cache parameter group can be used with. Valid values are: memcached1.4 | memcached1.5 |
-  memcached1.6 | redis2.6 | redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.0 | redis6.2
+  memcached1.6 | redis2.6 | redis2.8 | redis3.2 | redis4.0 | redis5.0 | redis6.x
 - `cache_parameter_group_name`: A user-specified name for the cache parameter group.
 - `description`: A user-specified description for the cache parameter group.
 

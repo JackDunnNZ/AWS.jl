@@ -15,12 +15,13 @@ upgrade/retrain existing predictors.  Creating new predictors  The following par
 required when creating a new predictor:    PredictorName - A unique name for the predictor.
    DatasetGroupArn - The ARN of the dataset group used to train the predictor.
 ForecastFrequency - The granularity of your forecasts (hourly, daily, weekly, etc).
-ForecastHorizon - The number of time steps being forecasted.   When creating a new
-predictor, do not specify a value for ReferencePredictorArn.  Upgrading and retraining
-predictors  The following parameters are required when retraining or upgrading a predictor:
-   PredictorName - A unique name for the predictor.    ReferencePredictorArn - The ARN of
-the predictor to retrain or upgrade.   When upgrading or retraining a predictor, only
-specify values for the ReferencePredictorArn and PredictorName.
+ForecastHorizon - The number of time-steps that the model predicts. The forecast horizon is
+also called the prediction length.   When creating a new predictor, do not specify a value
+for ReferencePredictorArn.  Upgrading and retraining predictors  The following parameters
+are required when retraining or upgrading a predictor:    PredictorName - A unique name for
+the predictor.    ReferencePredictorArn - The ARN of the predictor to retrain or upgrade.
+When upgrading or retraining a predictor, only specify values for the ReferencePredictorArn
+and PredictorName.
 
 # Arguments
 - `predictor_name`: A unique name for the predictor
@@ -41,10 +42,19 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
   equal to the TARGET_TIME_SERIES dataset frequency. When a RELATED_TIME_SERIES dataset is
   provided, the frequency must be equal to the RELATED_TIME_SERIES dataset frequency.
 - `"ForecastHorizon"`: The number of time-steps that the model predicts. The forecast
-  horizon is also called the prediction length.
+  horizon is also called the prediction length. The maximum forecast horizon is the lesser of
+  500 time-steps or 1/4 of the TARGET_TIME_SERIES dataset length. If you are retraining an
+  existing AutoPredictor, then the maximum forecast horizon is the lesser of 500 time-steps
+  or 1/3 of the TARGET_TIME_SERIES dataset length. If you are upgrading to an AutoPredictor
+  or retraining an existing AutoPredictor, you cannot update the forecast horizon parameter.
+  You can meet this requirement by providing longer time-series in the dataset.
 - `"ForecastTypes"`: The forecast types used to train a predictor. You can specify up to
   five forecast types. Forecast types can be quantiles from 0.01 to 0.99, by increments of
   0.01 or higher. You can also specify the mean forecast with mean.
+- `"MonitorConfig"`: The configuration details for predictor monitoring. Provide a name for
+  the monitor resource to enable predictor monitoring. Predictor monitoring allows you to see
+  how your predictor's performance changes over time. For more information, see Predictor
+  Monitoring.
 - `"OptimizationMetric"`: The accuracy metric used to optimize the predictor.
 - `"ReferencePredictorArn"`: The ARN of the predictor to retrain or upgrade. This parameter
   is only used when retraining or upgrading a predictor. When creating a new predictor, do
@@ -64,6 +74,11 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
   it to be a user tag and will count against the limit of 50 tags. Tags with only the key
   prefix of aws do not count against your tags per resource limit. You cannot edit or delete
   tag keys with this prefix.
+- `"TimeAlignmentBoundary"`: The time boundary Forecast uses to align and aggregate any
+  data that doesn't align with your forecast frequency. Provide the unit of time and the time
+  boundary as a key value pair. For more information on specifying a time boundary, see
+  Specifying a Time Boundary. If you don't provide a time boundary, Forecast uses a set of
+  Default Time Boundaries.
 """
 function create_auto_predictor(
     PredictorName; aws_config::AbstractAWSConfig=global_aws_config()
@@ -103,11 +118,11 @@ types within each domain. For each unique dataset domain and type within the dom
 Forecast requires your data to include a minimum set of predefined fields.     Schema  - A
 schema specifies the fields in the dataset, including the field name and data type.   After
 creating a dataset, you import your training data into it and add the dataset to a dataset
-group. You use the dataset group to create a predictor. For more information, see
-howitworks-datasets-groups. To get a list of all your datasets, use the ListDatasets
-operation. For example Forecast datasets, see the Amazon Forecast Sample GitHub repository.
- The Status of a dataset must be ACTIVE before you can import training data. Use the
-DescribeDataset operation to get the status.
+group. You use the dataset group to create a predictor. For more information, see Importing
+datasets. To get a list of all your datasets, use the ListDatasets operation. For example
+Forecast datasets, see the Amazon Forecast Sample GitHub repository.  The Status of a
+dataset must be ACTIVE before you can import training data. Use the DescribeDataset
+operation to get the status.
 
 # Arguments
 - `dataset_name`: A name for the dataset.
@@ -118,11 +133,11 @@ DescribeDataset operation to get the status.
   determine the fields that must be present in the training data that you import to the
   dataset. For example, if you choose the RETAIL domain and TARGET_TIME_SERIES as the
   DatasetType, Amazon Forecast requires item_id, timestamp, and demand fields to be present
-  in your data. For more information, see howitworks-datasets-groups.
+  in your data. For more information, see Importing datasets.
 - `schema`: The schema for the dataset. The schema attributes and their order must match
   the fields in your data. The dataset Domain and DatasetType that you choose determine the
   minimum required fields in your training data. For information about the required fields
-  for a specific dataset domain and type, see howitworks-domains-ds-types.
+  for a specific dataset domain and type, see Dataset Domains and Dataset Types.
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
@@ -201,11 +216,10 @@ end
 Creates a dataset group, which holds a collection of related datasets. You can add datasets
 to the dataset group when you create the dataset group, or later by using the
 UpdateDatasetGroup operation. After creating a dataset group and adding datasets, you use
-the dataset group when you create a predictor. For more information, see
-howitworks-datasets-groups. To get a list of all your datasets groups, use the
-ListDatasetGroups operation.  The Status of a dataset group must be ACTIVE before you can
-use the dataset group to create a predictor. To get the status, use the
-DescribeDatasetGroup operation.
+the dataset group when you create a predictor. For more information, see Dataset groups. To
+get a list of all your datasets groups, use the ListDatasetGroups operation.  The Status of
+a dataset group must be ACTIVE before you can use the dataset group to create a predictor.
+To get the status, use the DescribeDatasetGroup operation.
 
 # Arguments
 - `dataset_group_name`: A name for the dataset group.
@@ -215,7 +229,7 @@ DescribeDatasetGroup operation.
   the fields that must be present in training data that you import to a dataset. For example,
   if you choose the RETAIL domain and TARGET_TIME_SERIES as the DatasetType, Amazon Forecast
   requires that item_id, timestamp, and demand fields are present in your data. For more
-  information, see howitworks-datasets-groups.
+  information, see Dataset groups.
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
@@ -278,16 +292,15 @@ training data in an Amazon Simple Storage Service (Amazon S3) bucket and the Ama
 Resource Name (ARN) of the dataset that you want to import the data to. You must specify a
 DataSource object that includes an AWS Identity and Access Management (IAM) role that
 Amazon Forecast can assume to access the data, as Amazon Forecast makes a copy of your data
-and processes it in an internal AWS system. For more information, see
-aws-forecast-iam-roles. The training data must be in CSV format. The delimiter must be a
-comma (,). You can specify the path to a specific CSV file, the S3 bucket, or to a folder
-in the S3 bucket. For the latter two cases, Amazon Forecast imports all files up to the
-limit of 10,000 files. Because dataset imports are not aggregated, your most recent dataset
-import is the one that is used when training a predictor or generating a forecast. Make
-sure that your most recent dataset import contains all of the data you want to model off
-of, and not just the new data collected since the previous import. To get a list of all
-your dataset import jobs, filtered by specified criteria, use the ListDatasetImportJobs
-operation.
+and processes it in an internal AWS system. For more information, see Set up permissions.
+The training data must be in CSV or Parquet format. The delimiter must be a comma (,). You
+can specify the path to a specific file, the S3 bucket, or to a folder in the S3 bucket.
+For the latter two cases, Amazon Forecast imports all files up to the limit of 10,000
+files. Because dataset imports are not aggregated, your most recent dataset import is the
+one that is used when training a predictor or generating a forecast. Make sure that your
+most recent dataset import contains all of the data you want to model off of, and not just
+the new data collected since the previous import. To get a list of all your dataset import
+jobs, filtered by specified criteria, use the ListDatasetImportJobs operation.
 
 # Arguments
 - `data_source`: The location of the training data to import and an AWS Identity and Access
@@ -304,6 +317,7 @@ operation.
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"Format"`: The format of the imported data, CSV or PARQUET. The default value is CSV.
 - `"GeolocationFormat"`: The format of the geolocation attribute. The geolocation attribute
   can be formatted in one of two ways:    LAT_LONG - the latitude and longitude in decimal
   format (Example: 47.61_-122.33).    CC_POSTALCODE (US Only) - the country code (US),
@@ -425,7 +439,7 @@ timestamp in the range of time points.
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
 - `"DataSource"`:
-- `"EnableVisualization"`: Create an Expainability visualization that is viewable within
+- `"EnableVisualization"`: Create an Explainability visualization that is viewable within
   the AWS console.
 - `"EndDateTime"`: If TimePointGranularity is set to SPECIFIC, define the last time point
   for the Explainability. Use the following timestamp format: yyyy-MM-ddTHH:mm:ss (example:
@@ -509,6 +523,7 @@ DescribeExplainabilityExport operation.
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"Format"`: The format of the exported data, CSV or PARQUET.
 - `"Tags"`: Optional metadata to help you categorize and organize your resources. Each tag
   consists of a key and an optional value, both of which you define. Tag keys and values are
   case sensitive. The following restrictions apply to tags:   For each resource, each tag key
@@ -579,7 +594,12 @@ within the forecast. To get a list of all your forecasts, use the ListForecasts 
 The forecasts generated by Amazon Forecast are in the same time zone as the dataset that
 was used to create the predictor.  For more information, see howitworks-forecast.  The
 Status of the forecast must be ACTIVE before you can query or export the forecast. Use the
-DescribeForecast operation to get the status.
+DescribeForecast operation to get the status.  By default, a forecast includes predictions
+for every item (item_id) in the dataset group that was used to train the predictor.
+However, you can use the TimeSeriesSelector object to generate a forecast on a subset of
+time series. Forecast creation is skipped for any time series that you specify that are not
+in the input dataset. The forecast export file will not contain these time series or their
+forecasted values.
 
 # Arguments
 - `forecast_name`: A name for the forecast.
@@ -591,8 +611,9 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
 - `"ForecastTypes"`: The quantiles at which probabilistic forecasts are generated. You can
   currently specify up to 5 quantiles per forecast. Accepted values include 0.01 to 0.99
   (increments of .01 only) and mean. The mean forecast is different from the median (0.50)
-  when the distribution is not symmetric (for example, Beta and Negative Binomial). The
-  default value is [\"0.1\", \"0.5\", \"0.9\"].
+  when the distribution is not symmetric (for example, Beta and Negative Binomial).  The
+  default quantiles are the quantiles you specified during predictor creation. If you didn't
+  specify quantiles, the default values are [\"0.1\", \"0.5\", \"0.9\"].
 - `"Tags"`: The optional metadata that you apply to the forecast to help you categorize and
   organize them. Each tag consists of a key and an optional value, both of which you define.
   The following basic restrictions apply to tags:   Maximum number of tags per resource - 50.
@@ -607,6 +628,9 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
   have this prefix. If a tag value has aws as its prefix but the key does not, then Forecast
   considers it to be a user tag and will count against the limit of 50 tags. Tags with only
   the key prefix of aws do not count against your tags per resource limit.
+- `"TimeSeriesSelector"`: Defines the set of time series that are used to create the
+  forecasts in a TimeSeriesIdentifiers object. The TimeSeriesIdentifiers object needs the
+  following information:    DataSource     Format     Schema
 """
 function create_forecast(
     ForecastName, PredictorArn; aws_config::AbstractAWSConfig=global_aws_config()
@@ -666,6 +690,7 @@ Amazon S3 bucket. To get the status, use the DescribeForecastExportJob operation
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"Format"`: The format of the exported data, CSV or PARQUET. The default value is CSV.
 - `"Tags"`: The optional metadata that you apply to the forecast export job to help you
   categorize and organize them. Each tag consists of a key and an optional value, both of
   which you define. The following basic restrictions apply to tags:   Maximum number of tags
@@ -715,6 +740,54 @@ function create_forecast_export_job(
                     "Destination" => Destination,
                     "ForecastArn" => ForecastArn,
                     "ForecastExportJobName" => ForecastExportJobName,
+                ),
+                params,
+            ),
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
+    create_monitor(monitor_name, resource_arn)
+    create_monitor(monitor_name, resource_arn, params::Dict{String,<:Any})
+
+Creates a predictor monitor resource for an existing auto predictor. Predictor monitoring
+allows you to see how your predictor's performance changes over time. For more information,
+see Predictor Monitoring.
+
+# Arguments
+- `monitor_name`: The name of the monitor resource.
+- `resource_arn`: The Amazon Resource Name (ARN) of the predictor to monitor.
+
+# Optional Parameters
+Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"Tags"`: A list of tags to apply to the monitor resource.
+"""
+function create_monitor(
+    MonitorName, ResourceArn; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return forecast(
+        "CreateMonitor",
+        Dict{String,Any}("MonitorName" => MonitorName, "ResourceArn" => ResourceArn);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function create_monitor(
+    MonitorName,
+    ResourceArn,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return forecast(
+        "CreateMonitor",
+        Dict{String,Any}(
+            mergewith(
+                _merge,
+                Dict{String,Any}(
+                    "MonitorName" => MonitorName, "ResourceArn" => ResourceArn
                 ),
                 params,
             ),
@@ -880,8 +953,8 @@ end
     create_predictor_backtest_export_job(destination, predictor_arn, predictor_backtest_export_job_name, params::Dict{String,<:Any})
 
 Exports backtest forecasts and accuracy metrics generated by the CreateAutoPredictor or
-CreatePredictor operations. Two folders containing CSV files are exported to your specified
-S3 bucket.  The export file names will match the following conventions:
+CreatePredictor operations. Two folders containing CSV or Parquet files are exported to
+your specified S3 bucket.  The export file names will match the following conventions:
 &lt;ExportJobName&gt;_&lt;ExportTimestamp&gt;_&lt;PartNumber&gt;.csv  The
 &lt;ExportTimestamp&gt; component is in Java SimpleDate format (yyyy-MM-ddTHH-mm-ssZ). You
 must specify a DataDestination object that includes an Amazon S3 bucket and an AWS Identity
@@ -897,6 +970,7 @@ status, use the DescribePredictorBacktestExportJob operation.
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"Format"`: The format of the exported data, CSV or PARQUET. The default value is CSV.
 - `"Tags"`: Optional metadata to help you categorize and organize your backtests. Each tag
   consists of a key and an optional value, both of which you define. Tag keys and values are
   case sensitive. The following restrictions apply to tags:   For each resource, each tag key
@@ -961,7 +1035,7 @@ Deletes an Amazon Forecast dataset that was created using the CreateDataset oper
 can only delete datasets that have a status of ACTIVE or CREATE_FAILED. To get the status
 use the DescribeDataset operation.  Forecast does not automatically update any dataset
 groups that contain the deleted dataset. In order to update the dataset group, use the
-operation, omitting the deleted dataset's ARN.
+UpdateDatasetGroup operation, omitting the deleted dataset's ARN.
 
 # Arguments
 - `dataset_arn`: The Amazon Resource Name (ARN) of the dataset to delete.
@@ -1223,6 +1297,40 @@ function delete_forecast_export_job(
                 Dict{String,Any}("ForecastExportJobArn" => ForecastExportJobArn),
                 params,
             ),
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
+    delete_monitor(monitor_arn)
+    delete_monitor(monitor_arn, params::Dict{String,<:Any})
+
+Deletes a monitor resource. You can only delete a monitor resource with a status of ACTIVE,
+ACTIVE_STOPPED, CREATE_FAILED, or CREATE_STOPPED.
+
+# Arguments
+- `monitor_arn`: The Amazon Resource Name (ARN) of the monitor resource to delete.
+
+"""
+function delete_monitor(MonitorArn; aws_config::AbstractAWSConfig=global_aws_config())
+    return forecast(
+        "DeleteMonitor",
+        Dict{String,Any}("MonitorArn" => MonitorArn);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function delete_monitor(
+    MonitorArn,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return forecast(
+        "DeleteMonitor",
+        Dict{String,Any}(
+            mergewith(_merge, Dict{String,Any}("MonitorArn" => MonitorArn), params)
         );
         aws_config=aws_config,
         feature_set=SERVICE_FEATURE_SET,
@@ -1660,6 +1768,42 @@ function describe_forecast_export_job(
 end
 
 """
+    describe_monitor(monitor_arn)
+    describe_monitor(monitor_arn, params::Dict{String,<:Any})
+
+Describes a monitor resource. In addition to listing the properties provided in the
+CreateMonitor request, this operation lists the following properties:    Baseline
+CreationTime     LastEvaluationTime     LastEvaluationState     LastModificationTime
+Message     Status
+
+# Arguments
+- `monitor_arn`: The Amazon Resource Name (ARN) of the monitor resource to describe.
+
+"""
+function describe_monitor(MonitorArn; aws_config::AbstractAWSConfig=global_aws_config())
+    return forecast(
+        "DescribeMonitor",
+        Dict{String,Any}("MonitorArn" => MonitorArn);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function describe_monitor(
+    MonitorArn,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return forecast(
+        "DescribeMonitor",
+        Dict{String,Any}(
+            mergewith(_merge, Dict{String,Any}("MonitorArn" => MonitorArn), params)
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
     describe_predictor(predictor_arn)
     describe_predictor(predictor_arn, params::Dict{String,<:Any})
 
@@ -2048,6 +2192,95 @@ function list_forecasts(
 end
 
 """
+    list_monitor_evaluations(monitor_arn)
+    list_monitor_evaluations(monitor_arn, params::Dict{String,<:Any})
+
+Returns a list of the monitoring evaluation results and predictor events collected by the
+monitor resource during different windows of time. For information about monitoring see
+predictor-monitoring. For more information about retrieving monitoring results see Viewing
+Monitoring Results.
+
+# Arguments
+- `monitor_arn`: The Amazon Resource Name (ARN) of the monitor resource to get results from.
+
+# Optional Parameters
+Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"Filters"`: An array of filters. For each filter, provide a condition and a match
+  statement. The condition is either IS or IS_NOT, which specifies whether to include or
+  exclude the resources that match the statement from the list. The match statement consists
+  of a key and a value.  Filter properties     Condition - The condition to apply. Valid
+  values are IS and IS_NOT.    Key - The name of the parameter to filter on. The only valid
+  value is EvaluationState.    Value - The value to match. Valid values are only SUCCESS or
+  FAILURE.   For example, to list only successful monitor evaluations, you would specify:
+  \"Filters\": [ { \"Condition\": \"IS\", \"Key\": \"EvaluationState\", \"Value\":
+  \"SUCCESS\" } ]
+- `"MaxResults"`: The maximum number of monitoring results to return.
+- `"NextToken"`: If the result of the previous request was truncated, the response includes
+  a NextToken. To retrieve the next set of results, use the token in the next request. Tokens
+  expire after 24 hours.
+"""
+function list_monitor_evaluations(
+    MonitorArn; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return forecast(
+        "ListMonitorEvaluations",
+        Dict{String,Any}("MonitorArn" => MonitorArn);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function list_monitor_evaluations(
+    MonitorArn,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return forecast(
+        "ListMonitorEvaluations",
+        Dict{String,Any}(
+            mergewith(_merge, Dict{String,Any}("MonitorArn" => MonitorArn), params)
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
+    list_monitors()
+    list_monitors(params::Dict{String,<:Any})
+
+Returns a list of monitors created with the CreateMonitor operation and CreateAutoPredictor
+operation. For each monitor resource, this operation returns of a summary of its
+properties, including its Amazon Resource Name (ARN). You can retrieve a complete set of
+properties of a monitor resource by specify the monitor's ARN in the DescribeMonitor
+operation.
+
+# Optional Parameters
+Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"Filters"`: An array of filters. For each filter, provide a condition and a match
+  statement. The condition is either IS or IS_NOT, which specifies whether to include or
+  exclude the resources that match the statement from the list. The match statement consists
+  of a key and a value.  Filter properties     Condition - The condition to apply. Valid
+  values are IS and IS_NOT.    Key - The name of the parameter to filter on. The only valid
+  value is Status.    Value - The value to match.   For example, to list all monitors who's
+  status is ACTIVE, you would specify:  \"Filters\": [ { \"Condition\": \"IS\", \"Key\":
+  \"Status\", \"Value\": \"ACTIVE\" } ]
+- `"MaxResults"`: The maximum number of monitors to include in the response.
+- `"NextToken"`: If the result of the previous request was truncated, the response includes
+  a NextToken. To retrieve the next set of results, use the token in the next request. Tokens
+  expire after 24 hours.
+"""
+function list_monitors(; aws_config::AbstractAWSConfig=global_aws_config())
+    return forecast("ListMonitors"; aws_config=aws_config, feature_set=SERVICE_FEATURE_SET)
+end
+function list_monitors(
+    params::AbstractDict{String}; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return forecast(
+        "ListMonitors", params; aws_config=aws_config, feature_set=SERVICE_FEATURE_SET
+    )
+end
+
+"""
     list_predictor_backtest_export_jobs()
     list_predictor_backtest_export_jobs(params::Dict{String,<:Any})
 
@@ -2160,6 +2393,39 @@ function list_tags_for_resource(
 )
     return forecast(
         "ListTagsForResource",
+        Dict{String,Any}(
+            mergewith(_merge, Dict{String,Any}("ResourceArn" => ResourceArn), params)
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
+    resume_resource(resource_arn)
+    resume_resource(resource_arn, params::Dict{String,<:Any})
+
+Resumes a stopped monitor resource.
+
+# Arguments
+- `resource_arn`: The Amazon Resource Name (ARN) of the monitor resource to resume.
+
+"""
+function resume_resource(ResourceArn; aws_config::AbstractAWSConfig=global_aws_config())
+    return forecast(
+        "ResumeResource",
+        Dict{String,Any}("ResourceArn" => ResourceArn);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function resume_resource(
+    ResourceArn,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return forecast(
+        "ResumeResource",
         Dict{String,Any}(
             mergewith(_merge, Dict{String,Any}("ResourceArn" => ResourceArn), params)
         );

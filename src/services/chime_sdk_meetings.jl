@@ -46,6 +46,60 @@ function batch_create_attendee(
 end
 
 """
+    batch_update_attendee_capabilities_except(capabilities, excluded_attendee_ids, meeting_id)
+    batch_update_attendee_capabilities_except(capabilities, excluded_attendee_ids, meeting_id, params::Dict{String,<:Any})
+
+Updates AttendeeCapabilities except the capabilities listed in an ExcludedAttendeeIds table.
+
+# Arguments
+- `capabilities`: The capabilities (audio, video, or content) that you want to update.
+- `excluded_attendee_ids`: The AttendeeIDs that you want to exclude from one or more
+  capabilities.
+- `meeting_id`: The ID of the meeting associated with the update request.
+
+"""
+function batch_update_attendee_capabilities_except(
+    Capabilities,
+    ExcludedAttendeeIds,
+    MeetingId;
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return chime_sdk_meetings(
+        "PUT",
+        "/meetings/$(MeetingId)/attendees/capabilities?operation=batch-update-except",
+        Dict{String,Any}(
+            "Capabilities" => Capabilities, "ExcludedAttendeeIds" => ExcludedAttendeeIds
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function batch_update_attendee_capabilities_except(
+    Capabilities,
+    ExcludedAttendeeIds,
+    MeetingId,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return chime_sdk_meetings(
+        "PUT",
+        "/meetings/$(MeetingId)/attendees/capabilities?operation=batch-update-except",
+        Dict{String,Any}(
+            mergewith(
+                _merge,
+                Dict{String,Any}(
+                    "Capabilities" => Capabilities,
+                    "ExcludedAttendeeIds" => ExcludedAttendeeIds,
+                ),
+                params,
+            ),
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
     create_attendee(external_user_id, meeting_id)
     create_attendee(external_user_id, meeting_id, params::Dict{String,<:Any})
 
@@ -57,6 +111,11 @@ the Amazon Chime SDK, see Using the Amazon Chime SDK in the Amazon Chime Develop
   the attendee to an identity managed by a builder application.
 - `meeting_id`: The unique ID of the meeting.
 
+# Optional Parameters
+Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"Capabilities"`: The capabilities (audio, video, or content) that you want to grant an
+  attendee. If you don't specify capabilities, all users have send and receive capabilities
+  on all media channels by default.
 """
 function create_attendee(
     ExternalUserId, MeetingId; aws_config::AbstractAWSConfig=global_aws_config()
@@ -99,10 +158,11 @@ SDK, see Using the Amazon Chime SDK in the Amazon Chime Developer Guide.
 - `client_request_token`: The unique identifier for the client request. Use a different
   token for different meetings.
 - `external_meeting_id`: The external meeting ID.
-- `media_region`: The Region in which to create the meeting.  Available values: af-south-1
-  , ap-northeast-1 , ap-northeast-2 , ap-south-1 , ap-southeast-1 , ap-southeast-2 ,
-  ca-central-1 , eu-central-1 , eu-north-1 , eu-south-1 , eu-west-1 , eu-west-2 , eu-west-3 ,
-  sa-east-1 , us-east-1 , us-east-2 , us-west-1 , us-west-2 .
+- `media_region`: The Region in which to create the meeting.  Available values: af-south-1,
+  ap-northeast-1, ap-northeast-2, ap-south-1, ap-southeast-1, ap-southeast-2, ca-central-1,
+  eu-central-1, eu-north-1, eu-south-1, eu-west-1, eu-west-2, eu-west-3, sa-east-1,
+  us-east-1, us-east-2, us-west-1, us-west-2.  Available values in AWS GovCloud (US) Regions:
+  us-gov-east-1, us-gov-west-1.
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
@@ -111,6 +171,8 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
 - `"MeetingHostId"`: Reserved.
 - `"NotificationsConfiguration"`: The configuration for resource targets to receive
   notifications when meeting and attendee events occur.
+- `"PrimaryMeetingId"`: When specified, replicates the media from the primary meeting to
+  the new meeting.
 """
 function create_meeting(
     ClientRequestToken,
@@ -170,7 +232,11 @@ the Amazon Chime SDK in the Amazon Chime Developer Guide.
 - `client_request_token`: The unique identifier for the client request. Use a different
   token for different meetings.
 - `external_meeting_id`: The external meeting ID.
-- `media_region`: The Region in which to create the meeting.
+- `media_region`: The Region in which to create the meeting.  Available values: af-south-1,
+  ap-northeast-1, ap-northeast-2, ap-south-1, ap-southeast-1, ap-southeast-2, ca-central-1,
+  eu-central-1, eu-north-1, eu-south-1, eu-west-1, eu-west-2, eu-west-3, sa-east-1,
+  us-east-1, us-east-2, us-west-1, us-west-2.  Available values in AWS GovCloud (US) Regions:
+  us-gov-east-1, us-gov-west-1.
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
@@ -179,6 +245,8 @@ Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys 
 - `"MeetingHostId"`: Reserved.
 - `"NotificationsConfiguration"`: The configuration for resource targets to receive
   notifications when meeting and attendee events occur.
+- `"PrimaryMeetingId"`: When specified, replicates the media from the primary meeting to
+  the new meeting.
 """
 function create_meeting_with_attendees(
     Attendees,
@@ -486,6 +554,47 @@ function stop_meeting_transcription(
         "POST",
         "/meetings/$(MeetingId)/transcription?operation=stop",
         params;
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
+    update_attendee_capabilities(attendee_id, capabilities, meeting_id)
+    update_attendee_capabilities(attendee_id, capabilities, meeting_id, params::Dict{String,<:Any})
+
+The capabilties that you want to update.
+
+# Arguments
+- `attendee_id`: The ID of the attendee associated with the update request.
+- `capabilities`: The capabilties that you want to update.
+- `meeting_id`: The ID of the meeting associated with the update request.
+
+"""
+function update_attendee_capabilities(
+    AttendeeId, Capabilities, MeetingId; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return chime_sdk_meetings(
+        "PUT",
+        "/meetings/$(MeetingId)/attendees/$(AttendeeId)/capabilities",
+        Dict{String,Any}("Capabilities" => Capabilities);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function update_attendee_capabilities(
+    AttendeeId,
+    Capabilities,
+    MeetingId,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return chime_sdk_meetings(
+        "PUT",
+        "/meetings/$(MeetingId)/attendees/$(AttendeeId)/capabilities",
+        Dict{String,Any}(
+            mergewith(_merge, Dict{String,Any}("Capabilities" => Capabilities), params)
+        );
         aws_config=aws_config,
         feature_set=SERVICE_FEATURE_SET,
     )

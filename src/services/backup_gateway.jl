@@ -209,6 +209,39 @@ function disassociate_gateway_from_server(
 end
 
 """
+    get_gateway(gateway_arn)
+    get_gateway(gateway_arn, params::Dict{String,<:Any})
+
+By providing the ARN (Amazon Resource Name), this API returns the gateway.
+
+# Arguments
+- `gateway_arn`: The Amazon Resource Name (ARN) of the gateway.
+
+"""
+function get_gateway(GatewayArn; aws_config::AbstractAWSConfig=global_aws_config())
+    return backup_gateway(
+        "GetGateway",
+        Dict{String,Any}("GatewayArn" => GatewayArn);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function get_gateway(
+    GatewayArn,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return backup_gateway(
+        "GetGateway",
+        Dict{String,Any}(
+            mergewith(_merge, Dict{String,Any}("GatewayArn" => GatewayArn), params)
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
     import_hypervisor_configuration(host, name)
     import_hypervisor_configuration(host, name, params::Dict{String,<:Any})
 
@@ -591,6 +624,43 @@ function update_gateway_information(
 end
 
 """
+    update_gateway_software_now(gateway_arn)
+    update_gateway_software_now(gateway_arn, params::Dict{String,<:Any})
+
+Updates the gateway virtual machine (VM) software. The request immediately triggers the
+software update.  When you make this request, you get a 200 OK success response
+immediately. However, it might take some time for the update to complete.
+
+# Arguments
+- `gateway_arn`: The Amazon Resource Name (ARN) of the gateway to be updated.
+
+"""
+function update_gateway_software_now(
+    GatewayArn; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return backup_gateway(
+        "UpdateGatewaySoftwareNow",
+        Dict{String,Any}("GatewayArn" => GatewayArn);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function update_gateway_software_now(
+    GatewayArn,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return backup_gateway(
+        "UpdateGatewaySoftwareNow",
+        Dict{String,Any}(
+            mergewith(_merge, Dict{String,Any}("GatewayArn" => GatewayArn), params)
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
     update_hypervisor(hypervisor_arn)
     update_hypervisor(hypervisor_arn, params::Dict{String,<:Any})
 
@@ -604,6 +674,7 @@ hypervisor to update using the Amazon Resource Name (ARN) of the hypervisor in y
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
 - `"Host"`: The updated host of the hypervisor. This can be either an IP address or a
   fully-qualified domain name (FQDN).
+- `"Name"`: The updated name for the hypervisor
 - `"Password"`: The updated password for the hypervisor.
 - `"Username"`: The updated username for the hypervisor.
 """

@@ -83,29 +83,27 @@ function back_test_anomaly_detector(
 end
 
 """
-    create_alert(action, alert_name, alert_sensitivity_threshold, anomaly_detector_arn)
-    create_alert(action, alert_name, alert_sensitivity_threshold, anomaly_detector_arn, params::Dict{String,<:Any})
+    create_alert(action, alert_name, anomaly_detector_arn)
+    create_alert(action, alert_name, anomaly_detector_arn, params::Dict{String,<:Any})
 
 Creates an alert for an anomaly detector.
 
 # Arguments
 - `action`: Action that will be triggered when there is an alert.
 - `alert_name`: The name of the alert.
-- `alert_sensitivity_threshold`: An integer from 0 to 100 specifying the alert sensitivity
-  threshold.
 - `anomaly_detector_arn`: The ARN of the detector to which the alert is attached.
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
 - `"AlertDescription"`: A description of the alert.
+- `"AlertFilters"`: The configuration of the alert filters, containing MetricList and
+  DimensionFilterList.
+- `"AlertSensitivityThreshold"`: An integer from 0 to 100 specifying the alert sensitivity
+  threshold.
 - `"Tags"`: A list of tags to apply to the alert.
 """
 function create_alert(
-    Action,
-    AlertName,
-    AlertSensitivityThreshold,
-    AnomalyDetectorArn;
-    aws_config::AbstractAWSConfig=global_aws_config(),
+    Action, AlertName, AnomalyDetectorArn; aws_config::AbstractAWSConfig=global_aws_config()
 )
     return lookoutmetrics(
         "POST",
@@ -113,7 +111,6 @@ function create_alert(
         Dict{String,Any}(
             "Action" => Action,
             "AlertName" => AlertName,
-            "AlertSensitivityThreshold" => AlertSensitivityThreshold,
             "AnomalyDetectorArn" => AnomalyDetectorArn,
         );
         aws_config=aws_config,
@@ -123,7 +120,6 @@ end
 function create_alert(
     Action,
     AlertName,
-    AlertSensitivityThreshold,
     AnomalyDetectorArn,
     params::AbstractDict{String};
     aws_config::AbstractAWSConfig=global_aws_config(),
@@ -137,7 +133,6 @@ function create_alert(
                 Dict{String,Any}(
                     "Action" => Action,
                     "AlertName" => AlertName,
-                    "AlertSensitivityThreshold" => AlertSensitivityThreshold,
                     "AnomalyDetectorArn" => AnomalyDetectorArn,
                 ),
                 params,
@@ -271,6 +266,45 @@ function create_metric_set(
                     "MetricSource" => MetricSource,
                 ),
                 params,
+            ),
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
+    deactivate_anomaly_detector(anomaly_detector_arn)
+    deactivate_anomaly_detector(anomaly_detector_arn, params::Dict{String,<:Any})
+
+Deactivates an anomaly detector.
+
+# Arguments
+- `anomaly_detector_arn`: The Amazon Resource Name (ARN) of the anomaly detector.
+
+"""
+function deactivate_anomaly_detector(
+    AnomalyDetectorArn; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return lookoutmetrics(
+        "POST",
+        "/DeactivateAnomalyDetector",
+        Dict{String,Any}("AnomalyDetectorArn" => AnomalyDetectorArn);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function deactivate_anomaly_detector(
+    AnomalyDetectorArn,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return lookoutmetrics(
+        "POST",
+        "/DeactivateAnomalyDetector",
+        Dict{String,Any}(
+            mergewith(
+                _merge, Dict{String,Any}("AnomalyDetectorArn" => AnomalyDetectorArn), params
             ),
         );
         aws_config=aws_config,
@@ -509,6 +543,57 @@ function describe_metric_set(
         "/DescribeMetricSet",
         Dict{String,Any}(
             mergewith(_merge, Dict{String,Any}("MetricSetArn" => MetricSetArn), params)
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
+    detect_metric_set_config(anomaly_detector_arn, auto_detection_metric_source)
+    detect_metric_set_config(anomaly_detector_arn, auto_detection_metric_source, params::Dict{String,<:Any})
+
+Detects an Amazon S3 dataset's file format, interval, and offset.
+
+# Arguments
+- `anomaly_detector_arn`: An anomaly detector ARN.
+- `auto_detection_metric_source`: A data source.
+
+"""
+function detect_metric_set_config(
+    AnomalyDetectorArn,
+    AutoDetectionMetricSource;
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return lookoutmetrics(
+        "POST",
+        "/DetectMetricSetConfig",
+        Dict{String,Any}(
+            "AnomalyDetectorArn" => AnomalyDetectorArn,
+            "AutoDetectionMetricSource" => AutoDetectionMetricSource,
+        );
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function detect_metric_set_config(
+    AnomalyDetectorArn,
+    AutoDetectionMetricSource,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return lookoutmetrics(
+        "POST",
+        "/DetectMetricSetConfig",
+        Dict{String,Any}(
+            mergewith(
+                _merge,
+                Dict{String,Any}(
+                    "AnomalyDetectorArn" => AnomalyDetectorArn,
+                    "AutoDetectionMetricSource" => AutoDetectionMetricSource,
+                ),
+                params,
+            ),
         );
         aws_config=aws_config,
         feature_set=SERVICE_FEATURE_SET,
@@ -1073,6 +1158,49 @@ function untag_resource(
         "DELETE",
         "/tags/$(resourceArn)",
         Dict{String,Any}(mergewith(_merge, Dict{String,Any}("tagKeys" => tagKeys), params));
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
+    update_alert(alert_arn)
+    update_alert(alert_arn, params::Dict{String,<:Any})
+
+Make changes to an existing alert.
+
+# Arguments
+- `alert_arn`: The ARN of the alert to update.
+
+# Optional Parameters
+Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"Action"`: Action that will be triggered when there is an alert.
+- `"AlertDescription"`: A description of the alert.
+- `"AlertFilters"`: The configuration of the alert filters, containing MetricList and
+  DimensionFilterList.
+- `"AlertSensitivityThreshold"`: An integer from 0 to 100 specifying the alert sensitivity
+  threshold.
+"""
+function update_alert(AlertArn; aws_config::AbstractAWSConfig=global_aws_config())
+    return lookoutmetrics(
+        "POST",
+        "/UpdateAlert",
+        Dict{String,Any}("AlertArn" => AlertArn);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function update_alert(
+    AlertArn,
+    params::AbstractDict{String};
+    aws_config::AbstractAWSConfig=global_aws_config(),
+)
+    return lookoutmetrics(
+        "POST",
+        "/UpdateAlert",
+        Dict{String,Any}(
+            mergewith(_merge, Dict{String,Any}("AlertArn" => AlertArn), params)
+        );
         aws_config=aws_config,
         feature_set=SERVICE_FEATURE_SET,
     )

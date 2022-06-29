@@ -198,10 +198,13 @@ AppInstanceUserArn of the user that makes the API call as the value in the heade
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"ChannelId"`: The ID of the channel in the request.
+- `"MemberArns"`: The ARNs of the channel members in the request.
 - `"Metadata"`: The metadata of the creation request. Limited to 1KB and UTF-8.
 - `"Mode"`: The channel mode: UNRESTRICTED or RESTRICTED. Administrators, moderators, and
   channel members can add themselves and other members to unrestricted channels. Only
   administrators and moderators can add members to restricted channels.
+- `"ModeratorArns"`: The ARNs of the channel moderators in the request.
 - `"Privacy"`: The channel's privacy level: PUBLIC or PRIVATE. Private channels aren't
   discoverable by users outside the channel. Public channels are discoverable by anyone in
   the AppInstance.
@@ -2086,6 +2089,45 @@ function redact_channel_message(
 end
 
 """
+    search_channels(fields)
+    search_channels(fields, params::Dict{String,<:Any})
+
+Allows an AppInstanceUser to search the channels that they belong to. The AppInstanceUser
+can search by membership or external ID. An AppInstanceAdmin can search across all channels
+within the AppInstance.
+
+# Arguments
+- `fields`: A list of the Field objects in the channel being searched.
+
+# Optional Parameters
+Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
+- `"max-results"`: The maximum number of channels that you want returned.
+- `"next-token"`: The token returned from previous API requests until the number of
+  channels is reached.
+- `"x-amz-chime-bearer"`: The AppInstanceUserArn of the user making the API call.
+"""
+function search_channels(Fields; aws_config::AbstractAWSConfig=global_aws_config())
+    return chime_sdk_messaging(
+        "POST",
+        "/channels?operation=search",
+        Dict{String,Any}("Fields" => Fields);
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+function search_channels(
+    Fields, params::AbstractDict{String}; aws_config::AbstractAWSConfig=global_aws_config()
+)
+    return chime_sdk_messaging(
+        "POST",
+        "/channels?operation=search",
+        Dict{String,Any}(mergewith(_merge, Dict{String,Any}("Fields" => Fields), params));
+        aws_config=aws_config,
+        feature_set=SERVICE_FEATURE_SET,
+    )
+end
+
+"""
     send_channel_message(client_request_token, content, persistence, type, channel_arn, x-amz-chime-bearer)
     send_channel_message(client_request_token, content, persistence, type, channel_arn, x-amz-chime-bearer, params::Dict{String,<:Any})
 
@@ -2251,45 +2293,37 @@ function untag_resource(
 end
 
 """
-    update_channel(mode, name, channel_arn, x-amz-chime-bearer)
-    update_channel(mode, name, channel_arn, x-amz-chime-bearer, params::Dict{String,<:Any})
+    update_channel(channel_arn, x-amz-chime-bearer)
+    update_channel(channel_arn, x-amz-chime-bearer, params::Dict{String,<:Any})
 
 Update a channel's attributes.  Restriction: You can't change a channel's privacy.   The
 x-amz-chime-bearer request header is mandatory. Use the AppInstanceUserArn of the user that
 makes the API call as the value in the header.
 
 # Arguments
-- `mode`: The mode of the update request.
-- `name`: The name of the channel.
 - `channel_arn`: The ARN of the channel.
 - `x-amz-chime-bearer`: The AppInstanceUserArn of the user that makes the API call.
 
 # Optional Parameters
 Optional parameters can be passed as a `params::Dict{String,<:Any}`. Valid keys are:
 - `"Metadata"`: The metadata for the update request.
+- `"Mode"`: The mode of the update request.
+- `"Name"`: The name of the channel.
 """
 function update_channel(
-    Mode,
-    Name,
-    channelArn,
-    x_amz_chime_bearer;
-    aws_config::AbstractAWSConfig=global_aws_config(),
+    channelArn, x_amz_chime_bearer; aws_config::AbstractAWSConfig=global_aws_config()
 )
     return chime_sdk_messaging(
         "PUT",
         "/channels/$(channelArn)",
         Dict{String,Any}(
-            "Mode" => Mode,
-            "Name" => Name,
-            "headers" => Dict{String,Any}("x-amz-chime-bearer" => x_amz_chime_bearer),
+            "headers" => Dict{String,Any}("x-amz-chime-bearer" => x_amz_chime_bearer)
         );
         aws_config=aws_config,
         feature_set=SERVICE_FEATURE_SET,
     )
 end
 function update_channel(
-    Mode,
-    Name,
     channelArn,
     x_amz_chime_bearer,
     params::AbstractDict{String};
@@ -2302,8 +2336,6 @@ function update_channel(
             mergewith(
                 _merge,
                 Dict{String,Any}(
-                    "Mode" => Mode,
-                    "Name" => Name,
                     "headers" =>
                         Dict{String,Any}("x-amz-chime-bearer" => x_amz_chime_bearer),
                 ),
