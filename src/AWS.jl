@@ -8,6 +8,7 @@ using HTTP
 using MbedTLS
 using Mocking
 using OrderedCollections: LittleDict, OrderedDict
+using RelocatableFolders
 using Sockets
 using URIs
 using UUIDs: UUIDs
@@ -43,6 +44,8 @@ using ..AWSExceptions: AWSException
 
 const user_agent = Ref("AWS.jl/1.0.0")
 const aws_config = Ref{AbstractAWSConfig}()
+
+const SERVICES_DIR = @path joinpath(@__DIR__, "services")
 
 """
     FeatureSet
@@ -149,7 +152,7 @@ using AWS: @service
 - `Expression`: Module which embeds the high-level service API wrapper functions in your namespace
 """
 macro service(module_name::Symbol, features...)
-    service_name = joinpath(@__DIR__, "services", lowercase(string(module_name)) * ".jl")
+    service_name = @path joinpath(SERVICES_DIR, lowercase(string(module_name)) * ".jl")
     map(_assignment_to_kw!, features)
 
     module_block = quote
